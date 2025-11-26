@@ -23,6 +23,7 @@ class Users(Base):
     hashed_password = Column(String, nullable=False)
 
     posts = relationship("Posts", back_populates="user")
+    likes = relationship("PostLikes", back_populates="user")
 
     following = relationship(
         "Users",

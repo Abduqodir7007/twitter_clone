@@ -11,3 +11,5 @@ fastapi-mail
 passlib
 python-multipart
 aiofiles
+alembic
+psycopg2-binary

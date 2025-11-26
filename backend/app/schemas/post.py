@@ -9,6 +9,7 @@ class PostResponse(BaseModel):
     id: UUID    
     text: str
     user: UserResponse
+    likes_count: int | None = 0
     created_at: datetime
     image_path: Optional[str] = None
 

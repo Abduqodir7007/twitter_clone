@@ -1,12 +1,14 @@
-import json
-import os
-import uuid
-import aiofiles
+import json, os, uuid, aiofiles
 from ..models.user import Users
-from ..models.posts import Posts
+from ..models.posts import Posts, PostLikes
 from ..database import get_db
 from ..websocket import manager
 from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from ..schemas.post import PostResponse
+from sqlalchemy.orm import selectinload
+from sqlalchemy.future import select
+from app.utils import get_current_user
 from fastapi import (
     APIRouter,
     Depends,
@@ -18,11 +20,6 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-from ..schemas.post import PostResponse
-from sqlalchemy.orm import selectinload
-from sqlalchemy.future import select
-from app.utils import get_current_user
 
 router = APIRouter(prefix="/post")
 
@@ -31,7 +28,7 @@ UPLOAD_FOLDER = "uploads/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-async def get_post_from_db(db: AsyncSession):
+async def get_post_from_db(db: AsyncSession):  # like count, reply feature
     query = (
         select(Posts)
         .order_by(Posts.created_at.desc())
@@ -102,7 +99,8 @@ async def create_post(
     db.add(new_post)
     await db.commit()
 
-    return {"msg": "Post Created"} 
+    return {"msg": "Post Created"}
+
 
 @router.delete("/delete/{id}", status_code=status.HTTP_200_OK)
 async def delete_post(
@@ -118,3 +116,15 @@ async def delete_post(
     await db.delete(post)
     await db.commit()
     return {"msg": "deleted"}
+
+
+@router.post("/{id}/like", status_code=status.HTTP_200_OK)
+async def post_like(id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Posts).where(Posts.id == id))
+    post = result.scalars().first()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
+        )
+    like = PostLikes()

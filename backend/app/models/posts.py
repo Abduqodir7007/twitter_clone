@@ -23,6 +23,8 @@ class PostLikes(Base):
     __tablename__ = "post_likes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    user = relationship("Users", back_populates="likes")
 
     post_id = Column(UUID(as_uuid=True), ForeignKey("posts.id", ondelete="CASCADE"))
-    post = relationship(Posts, back_populates="likes")
+    post = relationship(Posts, back_populates="likes")  
