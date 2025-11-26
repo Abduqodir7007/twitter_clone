@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..schemas.post import PostResponse
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
+from sqlalchemy import and_
 from app.utils import get_current_user
 from fastapi import (
     APIRouter,
@@ -119,7 +120,9 @@ async def delete_post(
 
 
 @router.post("/{id}/like", status_code=status.HTTP_200_OK)
-async def post_like(id: str, db: AsyncSession = Depends(get_db)):
+async def post_like(
+    id: str, user: Users = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(Posts).where(Posts.id == id))
     post = result.scalars().first()
 
@@ -127,4 +130,22 @@ async def post_like(id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
         )
-    like = PostLikes()
+
+    result = await db.execute(
+        select(PostLikes).where(
+            and_(PostLikes.user_id == user.id, PostLikes.post_id == post.id)
+        )
+    )
+
+    like = result.scalar_one_or_none()
+    if like:
+        await db.delete(like)
+        await db.commit()
+        return {"msg": "Dislike"}
+
+    new_like = PostLikes(user_id=user.id, post_id=post.id)
+
+    db.add(new_like)
+    await db.commit()
+
+    return {"msg": "Like"}
