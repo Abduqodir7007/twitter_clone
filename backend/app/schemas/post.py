@@ -6,10 +6,11 @@ from app.schemas.user import UserResponse
 
 
 class PostResponse(BaseModel):
-    id: UUID    
+    id: UUID
     text: str
     user: UserResponse
     likes_count: int | None = 0
+    is_liked: bool | None = False
     created_at: datetime
     image_path: Optional[str] = None
 

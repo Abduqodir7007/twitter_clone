@@ -10,10 +10,9 @@ from ..schemas.user import (
     UserLogin,
     UserProfileReponse,
     UserProfileUpdate,
-    #   UserResponse,
     RefreshTokenRequest,
 )
-from sqlalchemy import func, UUID
+from sqlalchemy import func
 from sqlalchemy import select, delete, insert
 from typing import Annotated, Optional
 from ..utils import (
@@ -244,6 +243,7 @@ async def user_to_follow(
             Users.image_path,
             func.count(F.c.follower_id).label("is_following"),
         )
+        .where(Users.id != user.id)
         .outerjoin(F, (F.c.follower_id == user.id) & (F.c.followee_id == Users.id))
         .group_by(Users.id)
     )
@@ -256,7 +256,7 @@ async def user_to_follow(
                 "id": row.id,
                 "first_name": row.first_name,
                 "last_name": row.last_name,
-                "image_path":row.image_path,
+                "image_path": row.image_path,
                 "is_following": bool(row.is_following),  # True if already followed
             }
         )

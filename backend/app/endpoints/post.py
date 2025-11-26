@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..schemas.post import PostResponse
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
-from sqlalchemy import and_
+from sqlalchemy import and_, func, exists
 from app.utils import get_current_user
 from fastapi import (
     APIRouter,
@@ -29,22 +29,36 @@ UPLOAD_FOLDER = "uploads/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-async def get_post_from_db(db: AsyncSession):  # like count, reply feature
+async def get_post_from_db(user_id: str, db: AsyncSession):  # like count, reply feature
+    sub_query = (
+        exists()
+        .where(and_(PostLikes.post_id == Posts.id, PostLikes.user_id == user_id))
+        .correlate(Posts)
+    )
     query = (
-        select(Posts)
-        .order_by(Posts.created_at.desc())
+        select(
+            Posts,
+            func.count(PostLikes.id).label("likes_count"),
+            sub_query.label("is_liked"),
+        )
+        .outerjoin(PostLikes, PostLikes.post_id == Posts.id)
         .options(selectinload(Posts.user))
+        .order_by(Posts.created_at.desc())
+        .group_by(Posts.id)
     )
     result = await db.execute(query)
-    posts = result.scalars().all()
+    posts = result.all()
+
     response = []
-    for post in posts:
+    for post, likes_count, is_liked in posts:
 
         response.append(
             {
                 "id": str(post.id),
                 "text": post.text,
                 "created_at": post.created_at.isoformat(),
+                "likes_count": likes_count,
+                "is_liked": is_liked,
                 "image_path": post.image_path,
                 "user": {
                     "first_name": post.user.first_name,
@@ -56,13 +70,21 @@ async def get_post_from_db(db: AsyncSession):  # like count, reply feature
 
 
 @router.get("/", response_model=list[PostResponse])
-async def get_all_posts(db: AsyncSession = Depends(get_db)):
-    posts = await get_post_from_db(db)
+async def get_all_posts(
+    user: Users = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+
+    posts = await get_post_from_db(str(user.id), db)
+
     return posts
 
 
 @router.websocket("/ws")
-async def get_posts(websocket: WebSocket, db: AsyncSession = Depends(get_db)):
+async def get_posts(
+    websocket: WebSocket,
+    user: Users = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
 
     await manager.connect(websocket)
 
@@ -71,7 +93,7 @@ async def get_posts(websocket: WebSocket, db: AsyncSession = Depends(get_db)):
             data = await websocket.receive_text()
             message = json.loads(data)
             if message.get("type") == "posts":
-                posts = await get_post_from_db(db)
+                posts = await get_post_from_db(str(user.id), db)
                 await websocket.send_json({"type": "posts", "data": posts})
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
@@ -119,7 +141,7 @@ async def delete_post(
     return {"msg": "deleted"}
 
 
-@router.post("/{id}/like", status_code=status.HTTP_200_OK)
+@router.post("/create_delete_like/{id}/", status_code=status.HTTP_200_OK)
 async def post_like(
     id: str, user: Users = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
