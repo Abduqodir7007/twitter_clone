@@ -29,7 +29,7 @@ UPLOAD_FOLDER = "uploads/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-async def get_post_from_db(user_id: str, db: AsyncSession):  # like count, reply feature
+async def get_post_from_db(user_id: str, db: AsyncSession):  #  TO DO reply count
     sub_query = (
         exists()
         .where(and_(PostLikes.post_id == Posts.id, PostLikes.user_id == user_id))
@@ -73,7 +73,6 @@ async def get_post_from_db(user_id: str, db: AsyncSession):  # like count, reply
 async def get_all_posts(
     user: Users = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
-
     posts = await get_post_from_db(str(user.id), db)
 
     return posts

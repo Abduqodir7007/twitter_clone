@@ -27,4 +27,18 @@ class PostLikes(Base):
     user = relationship("Users", back_populates="likes")
 
     post_id = Column(UUID(as_uuid=True), ForeignKey("posts.id", ondelete="CASCADE"))
-    post = relationship(Posts, back_populates="likes")  
+    post = relationship(Posts, back_populates="likes")
+    reply = relationship("PostReplt", back_populates="post")
+
+
+class PostReply(Base):
+    __tablename__ = "post_replies"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    reply = Column(Text, nullable=False)
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    user = relationship("Users", back_populates="replies")
+
+    post_id = Column(UUID(as_uuid=True), ForeignKey("posts.id", ondelete="CASCADE"))
+    post = relationship(Posts, back_populates="reply")

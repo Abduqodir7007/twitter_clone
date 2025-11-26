@@ -24,6 +24,7 @@ class Users(Base):
 
     posts = relationship("Posts", back_populates="user")
     likes = relationship("PostLikes", back_populates="user")
+    replies = relationship("PostReply", back_populates="user")
 
     following = relationship(
         "Users",

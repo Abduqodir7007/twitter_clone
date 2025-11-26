@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { apiClient } from "../api/client";
 
-export default function PostCard({ post, onReply }) {
+export default function PostCard({ post, onReply, onLikeUpdate }) {
     const [likes, setLikes] = useState(post.likes_count || 0);
     const [isLiked, setIsLiked] = useState(post.is_liked || false);
     const [replies, setReplies] = useState(post.replies_count || 0);
@@ -23,28 +23,43 @@ export default function PostCard({ post, onReply }) {
     };
 
     const handleLike = async () => {
+        // Optimistic UI update
+        const previousLikes = likes;
+        const previousIsLiked = isLiked;
+
+        if (isLiked) {
+            setLikes((prev) => Math.max(0, prev - 1));
+            setIsLiked(false);
+        } else {
+            setLikes((prev) => prev + 1);
+            setIsLiked(true);
+        }
+
         try {
             const token = localStorage.getItem("access_token");
 
-            // TODO: Replace with actual like endpoint when backend is ready
-            // const response = await fetch(`${apiClient.BASE_URL}/api/post/${post.id}/like`, {
-            //     method: "POST",
-            //     headers: {
-            //         "Authorization": `Bearer ${token}`,
-            //     },
-            // });
+            const response = await fetch(
+                `${apiClient.BASE_URL}/api/post/create_delete_like/${post.id}/`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
 
-            // Optimistic UI update
-            if (isLiked) {
-                setLikes((prev) => Math.max(0, prev - 1));
-                setIsLiked(false);
-            } else {
-                setLikes((prev) => prev + 1);
-                setIsLiked(true);
+            if (!response.ok) {
+                throw new Error("Failed to like post");
+            }
+
+            // Notify parent to refresh posts if needed
+            if (onLikeUpdate) {
+                onLikeUpdate(post.id);
             }
         } catch (err) {
-            // Revert on error
-            console.error("Failed to like post:", err);
+            // Revert optimistic update on error
+            setLikes(previousLikes);
+            setIsLiked(previousIsLiked);
         }
     };
 
