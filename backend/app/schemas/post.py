@@ -11,6 +11,7 @@ class PostResponse(BaseModel):
     user: UserResponse
     likes_count: int | None = 0
     is_liked: bool | None = False
+    reply_count: int
     created_at: datetime
     image_path: Optional[str] = None
 

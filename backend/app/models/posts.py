@@ -17,6 +17,7 @@ class Posts(Base):
     user = relationship("Users", back_populates="posts")
 
     likes = relationship("PostLikes", back_populates="post")
+    reply = relationship("PostReply", back_populates="post")
 
 
 class PostLikes(Base):
@@ -28,7 +29,6 @@ class PostLikes(Base):
 
     post_id = Column(UUID(as_uuid=True), ForeignKey("posts.id", ondelete="CASCADE"))
     post = relationship(Posts, back_populates="likes")
-    reply = relationship("PostReplt", back_populates="post")
 
 
 class PostReply(Base):

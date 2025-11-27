@@ -1,6 +1,6 @@
 import json, os, uuid, aiofiles
 from ..models.user import Users
-from ..models.posts import Posts, PostLikes
+from ..models.posts import Posts, PostLikes, PostReply
 from ..database import get_db
 from ..websocket import manager
 from typing import Optional
@@ -30,16 +30,24 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 async def get_post_from_db(user_id: str, db: AsyncSession):  #  TO DO reply count
-    sub_query = (
+    sub_query_for_like = (
         exists()
         .where(and_(PostLikes.post_id == Posts.id, PostLikes.user_id == user_id))
         .correlate(Posts)
     )
+
+    sub_query_for_reply = (
+        select(func.count(PostReply.post_id))
+        .where(PostReply.id == Posts.id)
+        .correlate(Posts)
+    )
+
     query = (
         select(
             Posts,
             func.count(PostLikes.id).label("likes_count"),
-            sub_query.label("is_liked"),
+            sub_query_for_like.label("is_liked"),
+            sub_query_for_reply.label("reply_count"),
         )
         .outerjoin(PostLikes, PostLikes.post_id == Posts.id)
         .options(selectinload(Posts.user))
@@ -50,7 +58,7 @@ async def get_post_from_db(user_id: str, db: AsyncSession):  #  TO DO reply coun
     posts = result.all()
 
     response = []
-    for post, likes_count, is_liked in posts:
+    for post, likes_count, is_liked, reply_count in posts:
 
         response.append(
             {
@@ -60,6 +68,7 @@ async def get_post_from_db(user_id: str, db: AsyncSession):  #  TO DO reply coun
                 "likes_count": likes_count,
                 "is_liked": is_liked,
                 "image_path": post.image_path,
+                "reply_count": reply_count or 0,
                 "user": {
                     "first_name": post.user.first_name,
                     "last_name": post.user.last_name,
@@ -100,7 +109,7 @@ async def get_posts(
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_post(
-    text: Optional[str] = Form(None),
+    text: Optional[str] = Form(None, max_length=1000),
     image: Optional[UploadFile] = File(None),
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -170,3 +179,25 @@ async def post_like(
     await db.commit()
 
     return {"msg": "Like"}
+
+
+@router.post("/{id}/reply/", status_code=status.HTTP_201_CREATED)
+async def reply_to_post(
+    id: str,
+    user: Users = Depends(get_current_user),
+    text: str = Form(..., max_length=1000),
+    db: AsyncSession = Depends(get_db),
+):
+
+    result = await db.execute(select(Posts).where(Posts.id == id))
+    post = result.scalars().first()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
+        )
+
+    reply = PostReply(text=text, post_id=post.id, user_id=user.id)
+    db.add(reply)
+    await db.commit()
+    return {"msg": "Reply created"}
