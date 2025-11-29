@@ -29,31 +29,35 @@ UPLOAD_FOLDER = "uploads/images"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-async def get_post_from_db(user_id: str, db: AsyncSession):  #  TO DO reply count
+async def get_post_from_db(user_id: str, db: AsyncSession):
     sub_query_for_like = (
-        exists()
-        .where(and_(PostLikes.post_id == Posts.id, PostLikes.user_id == user_id))
+        select(func.count(PostLikes.id))
+        .where(PostLikes.post_id == Posts.id)
+        .correlate(Posts)
+    )
+    sub_query_is_liked = (
+        select(func.count(PostLikes.id))
+        .where(PostLikes.post_id == Posts.id, PostLikes.user_id == user_id)
         .correlate(Posts)
     )
 
     sub_query_for_reply = (
-        select(func.count(PostReply.post_id))
-        .where(PostReply.id == Posts.id)
+        select(func.count(PostReply.id))
+        .where(PostReply.post_id == Posts.id)
         .correlate(Posts)
     )
 
     query = (
         select(
             Posts,
-            func.count(PostLikes.id).label("likes_count"),
-            sub_query_for_like.label("is_liked"),
+            sub_query_for_like.label("like_count"),
+            sub_query_is_liked.label("is_liked"),
             sub_query_for_reply.label("reply_count"),
         )
-        .outerjoin(PostLikes, PostLikes.post_id == Posts.id)
-        .options(selectinload(Posts.user))
         .order_by(Posts.created_at.desc())
-        .group_by(Posts.id)
+        .options(selectinload(Posts.user))
     )
+
     result = await db.execute(query)
     posts = result.all()
 
@@ -201,3 +205,67 @@ async def reply_to_post(
     db.add(reply)
     await db.commit()
     return {"msg": "Reply created"}
+
+
+@router.get("/{id}/replies/")
+async def get_post_replies(
+    id: str,
+    user: Users = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Posts).where(Posts.id == id))
+    post = result.scalars().first()
+
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
+        )
+
+    query = (
+        select(PostReply)
+        .where(PostReply.post_id == id)
+        .options(selectinload(PostReply.user))
+        .order_by(PostReply.created_at.desc())
+    )
+    result = await db.execute(query)
+    replies = result.scalars().all()
+
+    response = []
+    for reply in replies:
+        response.append(
+            {
+                "id": str(reply.id),
+                "text": reply.text,
+                "created_at": reply.created_at.isoformat(),
+                "user": {
+                    "first_name": reply.user.first_name,
+                    "last_name": reply.user.last_name,
+                },
+            }
+        )
+    return response
+
+
+@router.delete("/{post_id}/reply/{reply_id}/", status_code=status.HTTP_200_OK)
+async def delete_reply(
+    post_id: str,
+    reply_id: str,
+    user: Users = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(PostReply).where(PostReply.id == reply_id))
+    reply = result.scalars().first()
+
+    if not reply:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Reply not found"
+        )
+
+    if reply.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized"
+        )
+
+    await db.delete(reply)
+    await db.commit()
+    return {"msg": "Reply deleted"}
