@@ -20,3 +20,12 @@ class PostResponse(BaseModel):
     @field_serializer("id")
     def serialize_id(self, value: UUID) -> str:
         return str(value)
+    
+class ReplyResponse(BaseModel):
+    id: UUID
+    reply: str
+    user: UserResponse
+    created_at: datetime
+    
+    
+    

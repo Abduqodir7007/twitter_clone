@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 
 export default function PostCard({ post, onReply, onLikeUpdate }) {
+    const navigate = useNavigate();
     const [likes, setLikes] = useState(post.likes_count || 0);
     const [isLiked, setIsLiked] = useState(post.is_liked || false);
-    const [replies, setReplies] = useState(post.replies_count || 0);
+    const [replies, setReplies] = useState(post.reply_count || 0);
 
     const getDaysAgo = (date) => {
         const now = new Date();
@@ -22,7 +24,13 @@ export default function PostCard({ post, onReply, onLikeUpdate }) {
         return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
     };
 
-    const handleLike = async () => {
+    const handlePostClick = () => {
+        navigate(`/post/${post.id}`);
+    };
+
+    const handleLike = async (e) => {
+        e.stopPropagation();
+
         // Optimistic UI update
         const previousLikes = likes;
         const previousIsLiked = isLiked;
@@ -63,17 +71,18 @@ export default function PostCard({ post, onReply, onLikeUpdate }) {
         }
     };
 
-    const handleReply = () => {
+    const handleReply = (e) => {
+        e.stopPropagation();
         if (onReply) {
             onReply(post);
         }
-        // TODO: Open reply modal/form when backend is ready
     };
 
     return (
         <div
             className="p-4 transition cursor-pointer"
             style={{ borderBottom: "1px solid #2f3336" }}
+            onClick={handlePostClick}
             onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor = "#080808")
             }
@@ -166,7 +175,10 @@ export default function PostCard({ post, onReply, onLikeUpdate }) {
                         </button>
 
                         {/* Retweet Button */}
-                        <button className="flex items-center space-x-2 transition hover:text-green-500 group">
+                        <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center space-x-2 transition hover:text-green-500 group"
+                        >
                             <div className="p-2 rounded-full transition group-hover:bg-green-500/10">
                                 <svg
                                     className="w-5 h-5"
@@ -220,7 +232,10 @@ export default function PostCard({ post, onReply, onLikeUpdate }) {
                         </button>
 
                         {/* Share Button */}
-                        <button className="flex items-center space-x-2 transition hover:text-blue-500 group">
+                        <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center space-x-2 transition hover:text-blue-500 group"
+                        >
                             <div className="p-2 rounded-full transition group-hover:bg-blue-500/10">
                                 <svg
                                     className="w-5 h-5"

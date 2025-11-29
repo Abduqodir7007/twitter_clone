@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import PostCard from "../components/PostCard";
 import PostComposer from "../components/PostComposer";
 import WhoToFollow from "../components/WhoToFollow";
+import ReplyModal from "../components/ReplyModal";
 import { apiClient } from "../api/client";
 
 export default function Home() {
@@ -11,6 +12,8 @@ export default function Home() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [replyModalOpen, setReplyModalOpen] = useState(false);
+    const [selectedPost, setSelectedPost] = useState(null);
 
     const loadPosts = async () => {
         setLoading(true);
@@ -46,6 +49,15 @@ export default function Home() {
 
     const handlePostCreated = () => {
         // Reload posts when a new post is created
+        loadPosts();
+    };
+
+    const handleReplyClick = (post) => {
+        setSelectedPost(post);
+        setReplyModalOpen(true);
+    };
+
+    const handleReplyCreated = () => {
         loadPosts();
     };
 
@@ -141,10 +153,7 @@ export default function Home() {
                             <PostCard
                                 key={post.id}
                                 post={post}
-                                onReply={(post) => {
-                                    // TODO: Open reply modal
-                                    console.log("Reply to post:", post.id);
-                                }}
+                                onReply={handleReplyClick}
                             />
                         ))
                     )}
@@ -155,6 +164,17 @@ export default function Home() {
             <div className="hidden lg:block w-80 p-4">
                 <WhoToFollow />
             </div>
+
+            {/* Reply Modal */}
+            <ReplyModal
+                post={selectedPost}
+                isOpen={replyModalOpen}
+                onClose={() => {
+                    setReplyModalOpen(false);
+                    setSelectedPost(null);
+                }}
+                onReplyCreated={handleReplyCreated}
+            />
         </div>
     );
 }

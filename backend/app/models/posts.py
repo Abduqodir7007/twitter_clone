@@ -36,6 +36,7 @@ class PostReply(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     reply = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now())
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     user = relationship("Users", back_populates="replies")

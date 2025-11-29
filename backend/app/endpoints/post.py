@@ -5,7 +5,7 @@ from ..database import get_db
 from ..websocket import manager
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..schemas.post import PostResponse
+from ..schemas.post import PostResponse, ReplyResponse
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
 from sqlalchemy import and_, func, exists
@@ -89,6 +89,20 @@ async def get_all_posts(
     posts = await get_post_from_db(str(user.id), db)
 
     return posts
+
+
+@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=list[ReplyResponse])
+async def get_post_by_id(id: str, db: AsyncSession = Depends(get_db)):
+    query = (
+        select(PostReply)
+        .where(PostReply.post_id == id)
+        .options(selectinload(PostReply.user))
+    )
+    result = await db.execute(query)
+    replies = result.scalars().all()
+    
+
+    return replies
 
 
 @router.websocket("/ws")
@@ -201,49 +215,49 @@ async def reply_to_post(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
         )
 
-    reply = PostReply(text=text, post_id=post.id, user_id=user.id)
+    reply = PostReply(reply=text, post_id=post.id, user_id=user.id)
     db.add(reply)
     await db.commit()
     return {"msg": "Reply created"}
 
 
-@router.get("/{id}/replies/")
-async def get_post_replies(
-    id: str,
-    user: Users = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(Posts).where(Posts.id == id))
-    post = result.scalars().first()
+# @router.get("/{id}/")
+# async def get_post_replies(
+#     id: str,
+#     user: Users = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     result = await db.execute(select(Posts).where(Posts.id == id))
+#     post = result.scalars().first()
 
-    if not post:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
-        )
+#     if not post:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
+#         )
 
-    query = (
-        select(PostReply)
-        .where(PostReply.post_id == id)
-        .options(selectinload(PostReply.user))
-        .order_by(PostReply.created_at.desc())
-    )
-    result = await db.execute(query)
-    replies = result.scalars().all()
+#     query = (
+#         select(PostReply)
+#         .where(PostReply.post_id == id)
+#         .options(selectinload(PostReply.user))
+#         .order_by(PostReply.created_at.desc())
+#     )
+#     result = await db.execute(query)
+#     replies = result.scalars().all()
 
-    response = []
-    for reply in replies:
-        response.append(
-            {
-                "id": str(reply.id),
-                "text": reply.text,
-                "created_at": reply.created_at.isoformat(),
-                "user": {
-                    "first_name": reply.user.first_name,
-                    "last_name": reply.user.last_name,
-                },
-            }
-        )
-    return response
+#     response = []
+#     for reply in replies:
+#         response.append(
+#             {
+#                 "id": str(reply.id),
+#                 "text": reply.text,
+#                 "created_at": reply.created_at.isoformat(),
+#                 "user": {
+#                     "first_name": reply.user.first_name,
+#                     "last_name": reply.user.last_name,
+#                 },
+#             }
+#         )
+#     return response
 
 
 @router.delete("/{post_id}/reply/{reply_id}/", status_code=status.HTTP_200_OK)

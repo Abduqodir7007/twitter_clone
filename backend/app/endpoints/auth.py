@@ -1,6 +1,6 @@
 import os, aiofiles, uuid
 from ..models.user import Users
-from ..models.posts import Posts
+from ..models.posts import Posts, PostLikes, PostReply
 from ..database import get_db
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -134,11 +134,52 @@ async def get_users_posts(
     user: Annotated[Users, Depends(get_current_user)],  # TO DO: add pagination here
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Posts).where(Posts.user_id == user.id)
+    like_count = (
+        select(func.count(PostLikes.id))
+        .where(PostLikes.post_id == Posts.id)
+        .correlate(Posts)
+    )
+    is_liked = (
+        select(func.count(PostLikes.id))
+        .where(PostLikes.post_id == Posts.id, PostLikes.user_id == user.id)
+        .correlate(Posts)
+    )
+
+    reply_count = (
+        select(func.count(PostReply.id))
+        .where(PostReply.post_id == Posts.id)
+        .correlate(Posts)
+    )
+    query = select(
+        Posts,
+        like_count.label("like_count"),
+        is_liked.label("is_liked"),
+        reply_count.label("reply_count"),
+    ).where(Posts.user_id == user.id)
 
     result = await db.execute(query)
 
-    posts = result.scalars().all()
+    posts = result.all()
+
+    response = []
+    for post, likes_count, is_liked, reply_count in posts:
+
+        response.append(
+            {
+                "id": str(post.id),
+                "text": post.text,
+                "created_at": post.created_at.isoformat(),
+                "likes_count": likes_count,
+                "is_liked": is_liked,
+                "image_path": post.image_path,
+                "reply_count": reply_count or 0,
+                "user": {
+                    "first_name": post.user.first_name,
+                    "last_name": post.user.last_name,
+                },
+            }
+        )
+    return response
 
     return posts
 
