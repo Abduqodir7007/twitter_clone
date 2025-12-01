@@ -72,17 +72,16 @@ export default function PostDetail() {
             }
 
             const data = await response.json();
+            console.log("Replies data:", data); // Debug log
 
-            // Backend returns a post object with a reply property
-            // Handle both cases: if data is an array or a single object
+            // Backend returns array of reply objects with like_count
             if (Array.isArray(data)) {
                 setReplies(data);
-            } else if (data.reply && Array.isArray(data.reply)) {
-                setReplies(data.reply);
             } else {
                 setReplies([]);
             }
         } catch (err) {
+            console.error("Error fetching replies:", err);
             setError("Failed to load replies. Please try again.");
         } finally {
             setLoading(false);
@@ -124,7 +123,10 @@ export default function PostDetail() {
         }
     };
 
-    const handleLikeReply = async (replyId) => {
+    const handleLikeReply = async (e, replyId) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         try {
             const token = localStorage.getItem("access_token");
 
@@ -142,11 +144,8 @@ export default function PostDetail() {
                 throw new Error("Failed to like reply");
             }
 
-            // Toggle like state for this reply
-            setReplyLikes((prev) => ({
-                ...prev,
-                [replyId]: !prev[replyId],
-            }));
+            // Refetch replies to get updated like counts
+            await fetchReplies();
         } catch (err) {
             console.error("Error liking reply:", err);
         }
@@ -403,8 +402,8 @@ export default function PostDetail() {
                                         >
                                             {/* Like Button */}
                                             <button
-                                                onClick={() =>
-                                                    handleLikeReply(reply.id)
+                                                onClick={(e) =>
+                                                    handleLikeReply(e, reply.id)
                                                 }
                                                 className="flex items-center space-x-2 transition hover:text-red-500 group"
                                             >
@@ -412,18 +411,20 @@ export default function PostDetail() {
                                                     <svg
                                                         className="w-4 h-4"
                                                         fill={
-                                                            replyLikes[reply.id]
+                                                            reply.like_count &&
+                                                            reply.like_count > 0
                                                                 ? "currentColor"
                                                                 : "none"
                                                         }
                                                         stroke="currentColor"
                                                         viewBox="0 0 24 24"
                                                         style={{
-                                                            color: replyLikes[
-                                                                reply.id
-                                                            ]
-                                                                ? "#f91880"
-                                                                : "inherit",
+                                                            color:
+                                                                reply.like_count &&
+                                                                reply.like_count >
+                                                                    0
+                                                                    ? "#f91880"
+                                                                    : "inherit",
                                                         }}
                                                     >
                                                         <path
@@ -434,6 +435,11 @@ export default function PostDetail() {
                                                         />
                                                     </svg>
                                                 </div>
+                                                {reply.like_count > 0 && (
+                                                    <span className="text-sm">
+                                                        {reply.like_count}
+                                                    </span>
+                                                )}
                                             </button>
                                         </div>
                                     </div>

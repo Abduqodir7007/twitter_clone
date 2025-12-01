@@ -91,17 +91,41 @@ async def get_all_posts(
     return posts
 
 
-@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=list[ReplyResponse])
+@router.get("/{id}", status_code=status.HTTP_200_OK)
 async def get_post_by_id(id: str, db: AsyncSession = Depends(get_db)):
+
+    like_count = (
+        select(func.count(ReplyLike.id))
+        .where(ReplyLike.reply_id == PostReply.id)
+        .correlate(PostReply)
+    )
+
     query = (
-        select(PostReply)
+        select(PostReply, like_count.label("like_count"))
         .where(PostReply.post_id == id)
         .options(selectinload(PostReply.user))
     )
     result = await db.execute(query)
-    replies = result.scalars().all()
+    replies = result.all()
+    response = []
 
-    return replies
+    for reply, like_count in replies:
+        response.append(
+            {
+                "id": str(reply.id),
+                "reply": reply.reply,
+                "created_at": reply.created_at,
+                "like_count": like_count,
+                "user": {
+                    "id": reply.user.id,
+                    "first_name": reply.user.first_name,
+                    "last_name": reply.user.last_name,
+                    "image_path": reply.user.image_path,
+                },
+            }
+        )
+
+    return response
 
 
 @router.websocket("/ws")
