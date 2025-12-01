@@ -43,3 +43,20 @@ class PostReply(Base):
 
     post_id = Column(UUID(as_uuid=True), ForeignKey("posts.id", ondelete="CASCADE"))
     post = relationship(Posts, back_populates="reply")
+
+    reply_like = relationship("ReplyLike", back_populates="reply")
+
+
+class ReplyLike(Base):
+    __tablename__ = "reply_likes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    created_at = Column(DateTime, default=datetime.now())
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    user = relationship("Users", back_populates="user_reply_likes")
+
+    reply_id = Column(
+        UUID(as_uuid=True), ForeignKey("post_replies.id", ondelete="CASCADE")
+    )   
+    reply = relationship(PostReply, back_populates="reply_like")

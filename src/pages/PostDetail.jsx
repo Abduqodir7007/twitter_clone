@@ -15,6 +15,7 @@ export default function PostDetail() {
     const [replyError, setReplyError] = useState("");
     const [userAvatar, setUserAvatar] = useState(null);
     const [userInitials, setUserInitials] = useState("U");
+    const [replyLikes, setReplyLikes] = useState({});
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -120,6 +121,34 @@ export default function PostDetail() {
             setReplyError("Failed to post reply. Please try again.");
         } finally {
             setReplyLoading(false);
+        }
+    };
+
+    const handleLikeReply = async (replyId) => {
+        try {
+            const token = localStorage.getItem("access_token");
+
+            const response = await fetch(
+                `${apiClient.BASE_URL}/api/post/reply/${replyId}/create-delete-like/`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error("Failed to like reply");
+            }
+
+            // Toggle like state for this reply
+            setReplyLikes((prev) => ({
+                ...prev,
+                [replyId]: !prev[replyId],
+            }));
+        } catch (err) {
+            console.error("Error liking reply:", err);
         }
     };
 
@@ -366,6 +395,47 @@ export default function PostDetail() {
                                         >
                                             {reply.reply}
                                         </p>
+
+                                        {/* Reply Actions */}
+                                        <div
+                                            className="flex items-center space-x-4 mt-3"
+                                            style={{ color: "#8b8b8b" }}
+                                        >
+                                            {/* Like Button */}
+                                            <button
+                                                onClick={() =>
+                                                    handleLikeReply(reply.id)
+                                                }
+                                                className="flex items-center space-x-2 transition hover:text-red-500 group"
+                                            >
+                                                <div className="p-2 rounded-full transition group-hover:bg-red-500/10">
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill={
+                                                            replyLikes[reply.id]
+                                                                ? "currentColor"
+                                                                : "none"
+                                                        }
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        style={{
+                                                            color: replyLikes[
+                                                                reply.id
+                                                            ]
+                                                                ? "#f91880"
+                                                                : "inherit",
+                                                        }}
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -1,6 +1,6 @@
 import json, os, uuid, aiofiles
 from ..models.user import Users
-from ..models.posts import Posts, PostLikes, PostReply
+from ..models.posts import Posts, PostLikes, PostReply, ReplyLike
 from ..database import get_db
 from ..websocket import manager
 from typing import Optional
@@ -100,7 +100,6 @@ async def get_post_by_id(id: str, db: AsyncSession = Depends(get_db)):
     )
     result = await db.execute(query)
     replies = result.scalars().all()
-    
 
     return replies
 
@@ -221,48 +220,8 @@ async def reply_to_post(
     return {"msg": "Reply created"}
 
 
-# @router.get("/{id}/")
-# async def get_post_replies(
-#     id: str,
-#     user: Users = Depends(get_current_user),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     result = await db.execute(select(Posts).where(Posts.id == id))
-#     post = result.scalars().first()
-
-#     if not post:
-#         raise HTTPException(
-#             status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found"
-#         )
-
-#     query = (
-#         select(PostReply)
-#         .where(PostReply.post_id == id)
-#         .options(selectinload(PostReply.user))
-#         .order_by(PostReply.created_at.desc())
-#     )
-#     result = await db.execute(query)
-#     replies = result.scalars().all()
-
-#     response = []
-#     for reply in replies:
-#         response.append(
-#             {
-#                 "id": str(reply.id),
-#                 "text": reply.text,
-#                 "created_at": reply.created_at.isoformat(),
-#                 "user": {
-#                     "first_name": reply.user.first_name,
-#                     "last_name": reply.user.last_name,
-#                 },
-#             }
-#         )
-#     return response
-
-
-@router.delete("/{post_id}/reply/{reply_id}/", status_code=status.HTTP_200_OK)
+@router.delete("/reply/{reply_id}/", status_code=status.HTTP_200_OK)
 async def delete_reply(
-    post_id: str,
     reply_id: str,
     user: Users = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -283,3 +242,35 @@ async def delete_reply(
     await db.delete(reply)
     await db.commit()
     return {"msg": "Reply deleted"}
+
+
+@router.post("/reply/{id}/create-delete-like/")
+async def like_dislike_reply(
+    id: str, user: Users = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(PostReply).where(PostReply.id == id))
+
+    reply = result.scalars().first()
+
+    if not reply:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Replt not found"
+        )
+
+    result = await db.execute(
+        select(ReplyLike).where(
+            and_(ReplyLike.reply_id == id, ReplyLike.user_id == user.id)
+        )
+    )
+
+    like = result.scalars().first()
+
+    if like:
+        await db.delete(like)
+        await db.commit()
+        return {"message": "Like deleted"}
+
+    new_like = ReplyLike(user_id=user.id, reply_id=reply.id)
+    db.add(new_like)
+    await db.commit()
+    return {"msg": "Liked"}
