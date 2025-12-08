@@ -25,10 +25,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if os.path.exists("uploads"):
-    app.mount(
-        "/uploads", StaticFiles(directory="uploads"), name="uploads"
-    )  # Learn to handel static files
-
 app.include_router(auth.router, prefix="/api")
 app.include_router(post.router, prefix="/api")

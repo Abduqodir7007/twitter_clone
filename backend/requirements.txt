@@ -13,3 +13,4 @@ python-multipart
 aiofiles
 alembic
 psycopg2-binary
+boto3

@@ -10,6 +10,9 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
 from sqlalchemy import and_, func, exists
 from app.utils import get_current_user
+from io import BytesIO
+from app.config import settings
+from app.aws_utils import storage, BUCKET
 from fastapi import (
     APIRouter,
     Depends,
@@ -155,19 +158,21 @@ async def create_post(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    filepath = None
 
-    if image:
-        extension = image.filename.split(".")[-1]
-        filename = f"{uuid.uuid4()}.{extension}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
 
-        async with aiofiles.open(filepath, "wb") as f:
-            content = await image.read()
-            await f.write(content)
+    upload_path = None
 
-    new_post = Posts(text=text, image_path=filepath, user_id=user.id)
+    content = await image.read()
+    storage.upload_fileobj(
+        Fileobj=BytesIO(content),
+        Bucket=BUCKET,
+        Key=f"images/{image.filename}",
+        ExtraArgs={"ContentType": image.content_type},
+    )
 
+    upload_path = f"https://{BUCKET}.s3.amazonaws.com/images/{image.filename}"
+
+    new_post = Posts(text=text, image_path=upload_path, user_id=user.id)
     db.add(new_post)
     await db.commit()
 
