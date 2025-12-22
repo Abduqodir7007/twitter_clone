@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 
 export default function WhoToFollow() {
+    const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -164,45 +166,84 @@ export default function WhoToFollow() {
                         </div>
 
                         {/* Follow Button */}
-                        <button
-                            onClick={() =>
-                                handleFollow(user.id, user.is_following)
-                            }
-                            className="px-4 py-1.5 rounded-full text-sm font-semibold transition"
-                            style={{
-                                backgroundColor: user.is_following
-                                    ? "transparent"
-                                    : "#e8eaeb",
-                                color: user.is_following
-                                    ? "#e8eaeb"
-                                    : "#000000",
-                                border: user.is_following
-                                    ? "1px solid #536471"
-                                    : "none",
-                            }}
-                            onMouseEnter={(e) => {
-                                if (user.is_following) {
-                                    e.currentTarget.style.backgroundColor =
-                                        "#2c0d0d";
-                                    e.currentTarget.style.borderColor =
-                                        "#5e1a1f";
-                                    e.currentTarget.style.color = "#f4212e";
-                                    e.currentTarget.textContent = "Unfollow";
+                        <div className="flex items-center space-x-2">
+                            {/* Message Button */}
+                            <button
+                                onClick={() =>
+                                    navigate(`/messages?userId=${user.id}`)
                                 }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (user.is_following) {
+                                className="p-2 rounded-full transition"
+                                style={{
+                                    border: "1px solid #536471",
+                                    color: "#e8eaeb",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor =
+                                        "#1a1a1a";
+                                }}
+                                onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor =
                                         "transparent";
-                                    e.currentTarget.style.borderColor =
-                                        "#536471";
-                                    e.currentTarget.style.color = "#e8eaeb";
-                                    e.currentTarget.textContent = "Following";
+                                }}
+                                title="Send message"
+                            >
+                                <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                    />
+                                </svg>
+                            </button>
+
+                            <button
+                                onClick={() =>
+                                    handleFollow(user.id, user.is_following)
                                 }
-                            }}
-                        >
-                            {user.is_following ? "Following" : "Follow"}
-                        </button>
+                                className="px-4 py-1.5 rounded-full text-sm font-semibold transition"
+                                style={{
+                                    backgroundColor: user.is_following
+                                        ? "transparent"
+                                        : "#e8eaeb",
+                                    color: user.is_following
+                                        ? "#e8eaeb"
+                                        : "#000000",
+                                    border: user.is_following
+                                        ? "1px solid #536471"
+                                        : "none",
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (user.is_following) {
+                                        e.currentTarget.style.backgroundColor =
+                                            "#2c0d0d";
+                                        e.currentTarget.style.borderColor =
+                                            "#5e1a1f";
+                                        e.currentTarget.style.color = "#f4212e";
+                                        e.currentTarget.textContent =
+                                            "Unfollow";
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (user.is_following) {
+                                        e.currentTarget.style.backgroundColor =
+                                            "transparent";
+                                        e.currentTarget.style.borderColor =
+                                            "#536471";
+                                        e.currentTarget.style.color = "#e8eaeb";
+                                        e.currentTarget.textContent =
+                                            "Following";
+                                    }
+                                }}
+                            >
+                                {user.is_following ? "Following" : "Follow"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             ))}

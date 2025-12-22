@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.endpoints import auth, post
+from app.endpoints import auth, post, chat
 from contextlib import asynccontextmanager
 from app.database import Base, engine
 import os
@@ -27,3 +27,4 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(post.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")

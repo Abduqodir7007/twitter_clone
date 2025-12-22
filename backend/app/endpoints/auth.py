@@ -1,4 +1,4 @@
-import os, aiofiles, uuid
+import os, uuid
 from ..models.user import Users
 from ..models.posts import Posts, PostLikes, PostReply
 from ..database import get_db
