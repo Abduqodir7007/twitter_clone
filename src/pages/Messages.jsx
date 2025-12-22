@@ -64,21 +64,21 @@ export default function Messages() {
 
     return (
         <div
-            className="flex min-h-screen"
+            className="flex h-screen overflow-hidden"
             style={{ backgroundColor: "#000000" }}
         >
             <Sidebar />
 
             {/* Main Content */}
             <div
-                className="flex-1 flex"
+                className="flex-1 flex h-screen overflow-hidden"
                 style={{
                     borderLeft: "1px solid #2f3336",
                 }}
             >
                 {/* Chat List Panel */}
                 <div
-                    className={`w-96 flex flex-col ${
+                    className={`w-96 h-screen flex flex-col ${
                         selectedChat ? "hidden md:flex" : "flex"
                     }`}
                     style={{
@@ -88,9 +88,9 @@ export default function Messages() {
                 >
                     {/* Header */}
                     <div
-                        className="sticky top-0 backdrop-blur-md z-10 p-4"
+                        className="flex-shrink-0 p-4"
                         style={{
-                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            backgroundColor: "#000000",
                             borderBottom: "1px solid #2f3336",
                         }}
                     >
@@ -104,7 +104,7 @@ export default function Messages() {
 
                     {/* Search Bar */}
                     <div
-                        className="p-4"
+                        className="flex-shrink-0 p-4"
                         style={{ borderBottom: "1px solid #2f3336" }}
                     >
                         <div
@@ -137,7 +137,7 @@ export default function Messages() {
                         </div>
                     </div>
 
-                    {/* Chat List */}
+                    {/* Chat List - Scrollable */}
                     <div className="flex-1 overflow-y-auto">
                         {loading ? (
                             <div
@@ -160,9 +160,9 @@ export default function Messages() {
 
                 {/* Chat Window Panel */}
                 <div
-                    className={`flex-1 ${
+                    className={`flex-1 h-screen ${
                         selectedChat ? "flex" : "hidden md:flex"
-                    } flex-col`}
+                    } flex-col overflow-hidden`}
                     style={{ backgroundColor: "#000000" }}
                 >
                     {selectedChat ? (

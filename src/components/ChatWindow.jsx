@@ -9,12 +9,15 @@ export default function ChatWindow({ chat, onBack }) {
     const messagesEndRef = useRef(null);
     const wsRef = useRef(null);
     const currentUserId = useRef(null);
+    const processedMessageIds = useRef(new Set()); // Track processed message IDs
 
     useEffect(() => {
         if (chat?.id) {
             loadMessages();
-            loadCurrentUser();
-            connectWebSocket();
+            // Load user first, then connect WebSocket
+            loadCurrentUser().then(() => {
+                connectWebSocket();
+            });
         }
 
         return () => {
@@ -34,9 +37,11 @@ export default function ChatWindow({ chat, onBack }) {
             const response = await apiClient.get("/api/auth/me", {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            currentUserId.current = response.id;
+            currentUserId.current = String(response.id);
+            return response.id;
         } catch (err) {
             console.error("Error loading current user:", err);
+            return null;
         }
     };
 
@@ -44,29 +49,43 @@ export default function ChatWindow({ chat, onBack }) {
         const wsUrl = apiClient.BASE_URL.replace("http", "ws");
         const ws = new WebSocket(`${wsUrl}/api/chat/ws/${chat.id}`);
 
-        ws.onopen = () => {
-            console.log("WebSocket connected");
-        };
-
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === "new_message") {
-                    // Only add if not from current user (they already see it optimistically)
-                    if (data.message.sender_id !== currentUserId.current) {
-                        setMessages((prev) => [
-                            ...prev,
-                            { ...data.message, is_own: false },
-                        ]);
+                    const senderId = String(data.message.sender_id)
+                        .toLowerCase()
+                        .trim();
+                    const myId = String(currentUserId.current)
+                        .toLowerCase()
+                        .trim();
+                    const messageId = String(data.message.id);
+
+                    // Skip if from current user - they already see it via optimistic update
+                    if (senderId === myId) {
+                        return;
                     }
+
+                    // Skip if already processed this message
+                    if (processedMessageIds.current.has(messageId)) {
+                        return;
+                    }
+
+                    // Mark as processed and add to messages
+                    processedMessageIds.current.add(messageId);
+                    setMessages((prev) => {
+                        const exists = prev.some(
+                            (msg) => String(msg.id) === messageId
+                        );
+                        if (exists) {
+                            return prev;
+                        }
+                        return [...prev, { ...data.message, is_own: false }];
+                    });
                 }
             } catch (err) {
                 console.error("Error parsing WebSocket message:", err);
             }
-        };
-
-        ws.onclose = () => {
-            console.log("WebSocket disconnected");
         };
 
         wsRef.current = ws;
@@ -140,6 +159,10 @@ export default function ChatWindow({ chat, onBack }) {
             }
 
             const data = await response.json();
+
+            // Mark this message ID as processed to prevent WebSocket duplicate
+            processedMessageIds.current.add(String(data.id));
+
             // Replace temp message with real one
             setMessages((prev) =>
                 prev.map((msg) =>
@@ -174,12 +197,12 @@ export default function ChatWindow({ chat, onBack }) {
 
     return (
         <div
-            className="flex flex-col h-full"
+            className="flex flex-col h-full overflow-hidden"
             style={{ backgroundColor: "#000000" }}
         >
             {/* Header */}
             <div
-                className="flex items-center p-4"
+                className="flex-shrink-0 flex items-center p-4"
                 style={{ borderBottom: "1px solid #2f3336" }}
             >
                 <button
@@ -290,7 +313,7 @@ export default function ChatWindow({ chat, onBack }) {
             {/* Message Input */}
             <form
                 onSubmit={handleSendMessage}
-                className="p-4"
+                className="flex-shrink-0 p-4"
                 style={{ borderTop: "1px solid #2f3336" }}
             >
                 <div className="flex items-center space-x-3">
