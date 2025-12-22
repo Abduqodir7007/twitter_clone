@@ -1,14 +1,14 @@
-import json, os, uuid, aiofiles
+import json
 from ..models.user import Users
 from ..models.posts import Posts, PostLikes, PostReply, ReplyLike
 from ..database import get_db
 from ..websocket import manager
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..schemas.post import PostResponse, ReplyResponse
+from ..schemas.post import PostResponse
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
-from sqlalchemy import and_, func, exists
+from sqlalchemy import and_, func
 from app.utils import get_current_user
 from io import BytesIO
 from app.config import settings
