@@ -51,6 +51,7 @@ async def get_user_chat(chat_id: UUID, user_id: UUID, db: AsyncSession) -> Chat:
     return result.scalars().first()
 
 
+# List of chats with the last message
 @router.get("/")
 async def get_user_chats(
     user: Users = Depends(get_current_user),
@@ -217,6 +218,7 @@ async def websocket_chat(websocket: WebSocket, chat_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.send_personal_message(chat_id, data)
     except WebSocketDisconnect:
         await manager.disconnect_chat(chat_id, websocket)
+
+        #   await manager.send_personal_message(chat_id, data)
